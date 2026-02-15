@@ -289,9 +289,75 @@
         }
 
         .model-picker-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
             font-family: 'JetBrains Mono', monospace;
             font-size: 11px;
             color: var(--text-muted);
+        }
+
+        .model-picker-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(13, 15, 18, 0.35);
+        }
+
+        .model-picker-close {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 999px;
+            transition: all 0.2s ease;
+            font-family: 'Sora', sans-serif;
+            font-size: 11px;
+        }
+
+        .model-picker-close:hover {
+            color: var(--text-primary);
+            border-color: var(--border-active);
+            background: var(--bg-elevated);
+        }
+
+        .model-picker-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0 10px;
+        }
+
+        .model-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(13, 15, 18, 0.25);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: 'Sora', sans-serif;
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        .model-chip:hover {
+            color: var(--text-primary);
+            border-color: var(--border-active);
+            background: var(--bg-elevated);
+        }
+
+        .model-chip.active {
+            color: var(--text-primary);
+            border-color: rgba(34, 211, 238, 0.35);
+            background: rgba(34, 211, 238, 0.08);
         }
 
         .model-picker-list {
@@ -311,10 +377,17 @@
             border-radius: 8px;
             cursor: pointer;
             user-select: none;
+            border: 1px solid transparent;
+            transition: all 0.15s ease;
         }
 
         .model-picker-item:hover {
             background: var(--bg-elevated);
+        }
+
+        .model-picker-item.selected {
+            border-color: rgba(34, 211, 238, 0.35);
+            background: rgba(34, 211, 238, 0.08);
         }
 
         .model-picker-item input {
@@ -772,20 +845,28 @@
                      <div class="model-tools">
                          <button class="btn btn-secondary btn-compact" onclick="fetchModelsForForm('edit')">Fetch Models</button>
                      </div>
-                     <div class="model-picker" id="editModelPicker" style="display: none;">
-                         <div class="model-picker-header">
-                             <div class="model-picker-title">Select models</div>
-                             <div class="model-picker-meta" id="editModelPickerMeta"></div>
-                         </div>
-                         <div class="form-group" style="margin-bottom: 10px;">
-                             <input type="text" id="editModelSearch" placeholder="Filter models...">
-                         </div>
-                         <div class="model-picker-list" id="editModelList"></div>
-                         <div class="model-picker-actions">
-                             <button class="btn btn-secondary btn-compact" onclick="applySelectedModels('edit', 'append')">Append</button>
-                             <button class="btn btn-primary btn-compact" onclick="applySelectedModels('edit', 'replace')">Use Selected</button>
-                         </div>
-                     </div>
+                      <div class="model-picker" id="editModelPicker" style="display: none;">
+                          <div class="model-picker-header">
+                              <div class="model-picker-title">Select models</div>
+                              <div class="model-picker-meta">
+                                  <span class="model-picker-badge" id="editModelPickerMeta"></span>
+                                  <button class="model-picker-close" onclick="closeModelPicker('edit')">Close</button>
+                              </div>
+                          </div>
+                          <div class="form-group" style="margin-bottom: 10px;">
+                              <input type="text" id="editModelSearch" placeholder="Filter models...">
+                          </div>
+                          <div class="model-picker-controls">
+                              <button class="model-chip" onclick="selectFilteredModels('edit')">Select filtered</button>
+                              <button class="model-chip" onclick="clearSelectedModels('edit')">Clear</button>
+                              <button class="model-chip" id="editSelectedOnlyBtn" onclick="toggleSelectedOnly('edit')">Selected only</button>
+                          </div>
+                          <div class="model-picker-list" id="editModelList"></div>
+                          <div class="model-picker-actions">
+                              <button class="btn btn-secondary btn-compact" onclick="applySelectedModels('edit', 'append')">Append</button>
+                              <button class="btn btn-primary btn-compact" onclick="applySelectedModels('edit', 'replace')">Use Selected</button>
+                          </div>
+                      </div>
                   </div>
                 <div class="form-group">
                     <label>API Key</label>
@@ -832,10 +913,18 @@
                   <div class="model-picker" id="newModelPicker" style="display: none;">
                       <div class="model-picker-header">
                           <div class="model-picker-title">Select models</div>
-                          <div class="model-picker-meta" id="newModelPickerMeta"></div>
+                          <div class="model-picker-meta">
+                              <span class="model-picker-badge" id="newModelPickerMeta"></span>
+                              <button class="model-picker-close" onclick="closeModelPicker('new')">Close</button>
+                          </div>
                       </div>
                       <div class="form-group" style="margin-bottom: 10px;">
                           <input type="text" id="newModelSearch" placeholder="Filter models...">
+                      </div>
+                      <div class="model-picker-controls">
+                          <button class="model-chip" onclick="selectFilteredModels('new')">Select filtered</button>
+                          <button class="model-chip" onclick="clearSelectedModels('new')">Clear</button>
+                          <button class="model-chip" id="newSelectedOnlyBtn" onclick="toggleSelectedOnly('new')">Selected only</button>
                       </div>
                       <div class="model-picker-list" id="newModelList"></div>
                       <div class="model-picker-actions">
@@ -883,8 +972,8 @@
          let activeProfile = null;
 
          const modelPickerState = {
-             new: { models: [], selected: new Set(), lastFetchKey: '' },
-             edit: { models: [], selected: new Set(), lastFetchKey: '' }
+             new: { models: [], selected: new Set(), lastFetchKey: '', selectedOnly: false },
+             edit: { models: [], selected: new Set(), lastFetchKey: '', selectedOnly: false }
          };
 
          function getFormDom(kind) {
@@ -896,7 +985,8 @@
                      pickerEl: document.getElementById('editModelPicker'),
                      metaEl: document.getElementById('editModelPickerMeta'),
                      searchEl: document.getElementById('editModelSearch'),
-                     listEl: document.getElementById('editModelList')
+                     listEl: document.getElementById('editModelList'),
+                     selectedOnlyBtn: document.getElementById('editSelectedOnlyBtn')
                  };
              }
              return {
@@ -906,8 +996,20 @@
                  pickerEl: document.getElementById('newModelPicker'),
                  metaEl: document.getElementById('newModelPickerMeta'),
                  searchEl: document.getElementById('newModelSearch'),
-                 listEl: document.getElementById('newModelList')
+                 listEl: document.getElementById('newModelList'),
+                 selectedOnlyBtn: document.getElementById('newSelectedOnlyBtn')
              };
+         }
+
+         function isModelPickerOpen(kind) {
+             const dom = getFormDom(kind);
+             return Boolean(dom && dom.pickerEl && dom.pickerEl.style.display !== 'none');
+         }
+
+         function closeModelPicker(kind) {
+             const dom = getFormDom(kind);
+             if (!dom || !dom.pickerEl) return;
+             dom.pickerEl.style.display = 'none';
          }
 
          function renderModelPicker(kind) {
@@ -917,11 +1019,31 @@
 
              const q = String(dom.searchEl.value || '').trim().toLowerCase();
              const models = Array.isArray(state.models) ? state.models : [];
-             const filtered = q
+             let filtered = q
                  ? models.filter((id) => String(id).toLowerCase().includes(q))
                  : models;
 
-             dom.metaEl.textContent = `${filtered.length}/${models.length}`;
+             if (state.selectedOnly) {
+                 filtered = filtered.filter((id) => state.selected.has(String(id || '').trim()));
+             }
+
+             // Sorting: keep provider order while searching; otherwise show selected first.
+             if (!q) {
+                 filtered = [...filtered].sort((a, b) => {
+                     const aa = String(a || '').trim();
+                     const bb = String(b || '').trim();
+                     const as = state.selected.has(aa) ? 1 : 0;
+                     const bs = state.selected.has(bb) ? 1 : 0;
+                     if (as !== bs) return bs - as;
+                     return aa.localeCompare(bb);
+                 });
+             }
+
+             const selectedCount = state.selected.size;
+             dom.metaEl.textContent = `${selectedCount} selected • ${filtered.length}/${models.length}`;
+             if (dom.selectedOnlyBtn) {
+                 dom.selectedOnlyBtn.classList.toggle('active', Boolean(state.selectedOnly));
+             }
 
              const maxRender = 200;
              const slice = filtered.slice(0, maxRender);
@@ -931,15 +1053,54 @@
                  const checked = state.selected.has(idStr);
                  const idArg = JSON.stringify(idStr);
                  const safeText = escapeHtml(idStr);
-                 return `
-                     <div class="model-picker-item" onclick="toggleModelSelection(${kindArg}, ${idArg})">
-                         <input type="checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation(); toggleModelSelection(${kindArg}, ${idArg})" />
-                         <div class="model-picker-id" title="${safeText}">${safeText}</div>
-                     </div>
-                 `;
+                  return `
+                     <div class="model-picker-item ${checked ? 'selected' : ''}" onclick="toggleModelSelection(${kindArg}, ${idArg})">
+                          <input type="checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation(); toggleModelSelection(${kindArg}, ${idArg})" />
+                          <div class="model-picker-id" title="${safeText}">${safeText}</div>
+                      </div>
+                  `;
              }).join('') + (filtered.length > maxRender
-                 ? `<div class="config-path">Showing first ${maxRender}. Refine filter to see more.</div>`
-                 : '');
+                  ? `<div class="config-path">Showing first ${maxRender}. Refine filter to see more.</div>`
+                  : '');
+         }
+
+         function selectFilteredModels(kind) {
+             const state = modelPickerState[kind];
+             const dom = getFormDom(kind);
+             if (!state || !dom) return;
+
+             const q = String(dom.searchEl.value || '').trim().toLowerCase();
+             const models = Array.isArray(state.models) ? state.models : [];
+             let filtered = q
+                 ? models.filter((id) => String(id).toLowerCase().includes(q))
+                 : models;
+
+             if (state.selectedOnly) {
+                 filtered = filtered.filter((id) => state.selected.has(String(id || '').trim()));
+             }
+
+             // Hard limit to avoid freezing on huge providers.
+             const limit = 2000;
+             for (const id of filtered.slice(0, limit)) {
+                 const v = String(id || '').trim();
+                 if (!v) continue;
+                 state.selected.add(v);
+             }
+             renderModelPicker(kind);
+         }
+
+         function clearSelectedModels(kind) {
+             const state = modelPickerState[kind];
+             if (!state) return;
+             state.selected = new Set();
+             renderModelPicker(kind);
+         }
+
+         function toggleSelectedOnly(kind) {
+             const state = modelPickerState[kind];
+             if (!state) return;
+             state.selectedOnly = !state.selectedOnly;
+             renderModelPicker(kind);
          }
 
          function toggleModelSelection(kind, modelId) {
@@ -991,6 +1152,7 @@
              if (state.lastFetchKey !== fetchKey) {
                  state.selected = new Set();
                  state.lastFetchKey = fetchKey;
+                 state.selectedOnly = false;
              }
 
              state.models = ids;
@@ -1005,6 +1167,7 @@
              for (const id of existing) state.selected.add(id);
 
              renderModelPicker(kind);
+             dom.searchEl.focus();
              showToast('Models fetched', 'success');
          }
 
@@ -1064,6 +1227,26 @@
                      await loadProfiles();
                      renderProfiles();
                  });
+             }
+         });
+
+         document.addEventListener('keydown', (e) => {
+             if (e.key === 'Escape') {
+                 // Existing behavior closes modals; also close any open model pickers.
+                 if (isModelPickerOpen('new')) closeModelPicker('new');
+                 if (isModelPickerOpen('edit')) closeModelPicker('edit');
+             }
+
+             if (e.key === 'Enter') {
+                 const t = e.target;
+                 if (t && t.id === 'newModelSearch' && isModelPickerOpen('new')) {
+                     e.preventDefault();
+                     applySelectedModels('new', 'replace');
+                 }
+                 if (t && t.id === 'editModelSearch' && isModelPickerOpen('edit')) {
+                     e.preventDefault();
+                     applySelectedModels('edit', 'replace');
+                 }
              }
          });
 
@@ -1263,6 +1446,7 @@
               modelPickerState.new.models = [];
               modelPickerState.new.selected = new Set();
               modelPickerState.new.lastFetchKey = '';
+              modelPickerState.new.selectedOnly = false;
               const picker = document.getElementById('newModelPicker');
               if (picker) picker.style.display = 'none';
               const search = document.getElementById('newModelSearch');
@@ -1370,6 +1554,7 @@
              modelPickerState.edit.models = [];
              modelPickerState.edit.selected = new Set(ids);
              modelPickerState.edit.lastFetchKey = '';
+             modelPickerState.edit.selectedOnly = false;
              const picker = document.getElementById('editModelPicker');
              if (picker) picker.style.display = 'none';
              const search = document.getElementById('editModelSearch');
