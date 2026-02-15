@@ -1156,7 +1156,8 @@
                  if (active) {
                      activeProfile = active;
                      document.getElementById('currentUrl').value = active.url;
-                     document.getElementById('currentKey').value = active.key ? '••••••••••••' + active.key.slice(-4) : '';
+                     // Never show any part of the key in the UI.
+                     document.getElementById('currentKey').value = active.key ? '••••••••••••' : '';
                      document.getElementById('configFilePath').textContent = 'Config: ' + (configPath || '(unknown)');
                      document.getElementById('authFilePath').textContent = 'Auth:   ' + (authPath || '(unknown)');
 
