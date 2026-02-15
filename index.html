@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenCode Config Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0b;
+            --bg-secondary: #111113;
+            --bg-tertiary: #18181b;
+            --bg-elevated: #1f1f23;
+            --border: #2a2a2e;
+            --border-active: #3d3d42;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --accent: #22d3ee;
+            --accent-glow: rgba(34, 211, 238, 0.15);
+            --success: #4ade80;
+            --danger: #f87171;
+            --warning: #fbbf24;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Sora', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(34, 211, 238, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(168, 85, 247, 0.03) 0%, transparent 50%);
+            animation: drift 20s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes drift {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            50% { transform: translate(-2%, -2%) rotate(1deg); }
+        }
+
+        .noise {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0.015;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            z-index: 9999;
+        }
+
+        /* Custom Title Bar */
+        .titlebar {
+            -webkit-app-region: drag;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            position: relative;
+            z-index: 100;
+        }
+
+        .titlebar-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .titlebar-icon {
+            width: 24px;
+            height: 24px;
+            background: linear-gradient(135deg, var(--accent), #a855f7);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            font-size: 10px;
+        }
+
+        .titlebar-title {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .titlebar-controls {
+            -webkit-app-region: no-drag;
+            display: flex;
+            gap: 8px;
+        }
+
+        .titlebar-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+
+        .titlebar-btn:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .titlebar-btn.close:hover {
+            background: rgba(248, 113, 113, 0.2);
+            color: var(--danger);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .container {
+            max-width: 100%;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: border-color 0.2s ease;
+        }
+
+        .card:hover {
+            border-color: var(--border-active);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .card-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .form-group {
+            margin-bottom: 14px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            transition: all 0.2s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        input::placeholder {
+            color: var(--text-muted);
+        }
+
+        input:read-only {
+            opacity: 0.7;
+            cursor: default;
+        }
+
+        .toggle-visibility {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            transition: color 0.2s ease;
+        }
+
+        .toggle-visibility:hover {
+            color: var(--text-secondary);
+        }
+
+        .model-tools {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        .btn-compact {
+            padding: 8px 10px;
+            font-size: 12px;
+            border-radius: 8px;
+            width: auto;
+            flex: 0 0 auto;
+        }
+
+        .model-picker {
+            margin-top: 10px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: rgba(13, 15, 18, 0.55);
+            backdrop-filter: blur(10px);
+        }
+
+        .model-picker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 10px;
+        }
+
+        .model-picker-title {
+            font-family: 'Sora', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .model-picker-meta {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .model-picker-list {
+            max-height: 180px;
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            padding: 6px;
+        }
+
+        .model-picker-item {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 8px 8px;
+            border-radius: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .model-picker-item:hover {
+            background: var(--bg-elevated);
+        }
+
+        .model-picker-item input {
+            width: auto;
+        }
+
+        .model-picker-id {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .model-picker-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-family: 'Sora', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg-primary);
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background: #67e8f9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 16px rgba(34, 211, 238, 0.25);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border-color: var(--border-active);
+        }
+
+        .profiles-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            max-height: 280px;
+            overflow-y: auto;
+        }
+
+        .profiles-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .profiles-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .profiles-list::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        .profiles-list::-webkit-scrollbar-thumb:hover {
+            background: var(--border-active);
+        }
+
+        .profile-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .profile-item:hover {
+            border-color: var(--border-active);
+            background: var(--bg-elevated);
+        }
+
+        .profile-item.active {
+            border-color: var(--accent);
+            background: var(--accent-glow);
+        }
+
+        .profile-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .profile-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .profile-item.active .profile-dot {
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        .profile-details {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .profile-name {
+            font-weight: 500;
+            font-size: 13px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .profile-url {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
+        }
+
+        .profile-actions {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .icon-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .icon-btn.danger:hover {
+            color: var(--danger);
+        }
+
+        .add-profile-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px;
+            background: transparent;
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+            font-family: 'Sora', sans-serif;
+            font-size: 13px;
+        }
+
+        .add-profile-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: var(--accent-glow);
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 14px 0;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(80px);
+            padding: 12px 20px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-color: rgba(74, 222, 128, 0.3);
+        }
+
+        .toast.success .toast-icon {
+            color: var(--success);
+        }
+
+        .toast.error {
+            border-color: rgba(248, 113, 113, 0.3);
+        }
+
+        .toast.error .toast-icon {
+            color: var(--danger);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            width: calc(100% - 40px);
+            max-width: 360px;
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+
+        .modal-overlay.show .modal {
+            transform: scale(1);
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 18px;
+        }
+
+        .modal-actions .btn {
+            flex: 1;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .status-badge.active {
+            background: rgba(74, 222, 128, 0.1);
+            color: var(--success);
+        }
+
+        .status-indicator {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .status-badge.active .status-indicator {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .config-path {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            padding: 8px 10px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            margin-top: 10px;
+            word-break: break-all;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 30px 16px;
+            color: var(--text-muted);
+        }
+
+        .empty-state svg {
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="noise"></div>
+    
+    <!-- Custom Title Bar -->
+    <div class="titlebar">
+        <div class="titlebar-left">
+            <div class="titlebar-icon">OC</div>
+            <span class="titlebar-title">OpenCode Config Manager</span>
+        </div>
+        <div class="titlebar-controls">
+            <button class="titlebar-btn" onclick="minimizeWindow()" title="Minimize to tray">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </button>
+            <button class="titlebar-btn close" onclick="closeWindow()" title="Close">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="container">
+            <!-- Current Active Profile -->
+            <div class="card" id="activeCard" style="display: none;">
+                <div class="card-header">
+                    <span class="card-title">Active Configuration</span>
+                    <span class="status-badge active">
+                        <span class="status-indicator"></span>
+                        Active
+                    </span>
+                </div>
+                <div class="form-group">
+                    <label>API Base URL</label>
+                    <input type="text" id="currentUrl" readonly>
+                </div>
+                <div class="form-group">
+                    <label>API Key</label>
+                    <input type="password" id="currentKey" readonly>
+                </div>
+                <div class="config-path" id="configFilePath"></div>
+                <div class="config-path" id="authFilePath"></div>
+
+                <div class="divider"></div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn btn-secondary" onclick="checkOpenCodeModels()" style="flex: 1;">Check /models</button>
+                    <button class="btn btn-secondary" onclick="openOpenCode()" style="flex: 1;">Open OpenCode</button>
+                </div>
+                <div class="config-path" id="modelsCheckResult" style="display: none;"></div>
+            </div>
+
+            <!-- Profiles List -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="card-title">Profiles</span>
+                </div>
+                <div class="profiles-list" id="profilesList">
+                    <!-- Profiles will be rendered here -->
+                </div>
+                <div class="divider"></div>
+                <button class="add-profile-btn" onclick="openAddModal()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Add New Profile
+                </button>
+            </div>
+
+            <!-- Edit Profile Card -->
+            <div class="card" id="editCard" style="display: none;">
+                <div class="card-header">
+                    <span class="card-title">Edit Profile</span>
+                </div>
+                <div class="form-group">
+                    <label>Profile Name</label>
+                    <input type="text" id="editName" placeholder="My OpenCode Config">
+                </div>
+                <div class="form-group">
+                    <label>Provider ID (from /connect -> Others)</label>
+                    <input type="text" id="editProviderId" placeholder="fox">
+                </div>
+                <div class="form-group">
+                    <label>API Base URL</label>
+                    <input type="text" id="editUrl" placeholder="https://api.opencode.ai/v1">
+                </div>
+                 <div class="form-group">
+                     <label>Model IDs (comma separated)</label>
+                     <input type="text" id="editModelId" placeholder="gpt-4o-mini, gpt-4.1-mini">
+                     <div class="model-tools">
+                         <button class="btn btn-secondary btn-compact" onclick="fetchModelsForForm('edit')">Fetch Models</button>
+                     </div>
+                     <div class="model-picker" id="editModelPicker" style="display: none;">
+                         <div class="model-picker-header">
+                             <div class="model-picker-title">Select models</div>
+                             <div class="model-picker-meta" id="editModelPickerMeta"></div>
+                         </div>
+                         <div class="form-group" style="margin-bottom: 10px;">
+                             <input type="text" id="editModelSearch" placeholder="Filter models...">
+                         </div>
+                         <div class="model-picker-list" id="editModelList"></div>
+                         <div class="model-picker-actions">
+                             <button class="btn btn-secondary btn-compact" onclick="applySelectedModels('edit', 'append')">Append</button>
+                             <button class="btn btn-primary btn-compact" onclick="applySelectedModels('edit', 'replace')">Use Selected</button>
+                         </div>
+                     </div>
+                  </div>
+                <div class="form-group">
+                    <label>API Key</label>
+                    <div class="input-wrapper">
+                        <input type="password" id="editKey" placeholder="sk-xxxxxxxxxxxxxxxx">
+                        <button class="toggle-visibility" onclick="toggleKeyVisibility('editKey')">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 16px;">
+                    <button class="btn btn-secondary" onclick="cancelEdit()" style="flex: 1;">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveProfile()" style="flex: 1;">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Modal -->
+    <div class="modal-overlay" id="addModal">
+        <div class="modal">
+            <h3 class="modal-title">Add New Profile</h3>
+            <div class="form-group">
+                <label>Profile Name</label>
+                <input type="text" id="newName" placeholder="My OpenCode Config">
+            </div>
+            <div class="form-group">
+                <label>Provider ID (from /connect -> Others)</label>
+                <input type="text" id="newProviderId" placeholder="fox">
+            </div>
+            <div class="form-group">
+                <label>API Base URL</label>
+                <input type="text" id="newUrl" placeholder="https://api.opencode.ai/v1">
+            </div>
+              <div class="form-group">
+                  <label>Model IDs (comma separated)</label>
+                  <input type="text" id="newModelId" placeholder="gpt-4o-mini, gpt-4.1-mini">
+                  <div class="model-tools">
+                      <button class="btn btn-secondary btn-compact" onclick="fetchModelsForForm('new')">Fetch Models</button>
+                  </div>
+                  <div class="model-picker" id="newModelPicker" style="display: none;">
+                      <div class="model-picker-header">
+                          <div class="model-picker-title">Select models</div>
+                          <div class="model-picker-meta" id="newModelPickerMeta"></div>
+                      </div>
+                      <div class="form-group" style="margin-bottom: 10px;">
+                          <input type="text" id="newModelSearch" placeholder="Filter models...">
+                      </div>
+                      <div class="model-picker-list" id="newModelList"></div>
+                      <div class="model-picker-actions">
+                          <button class="btn btn-secondary btn-compact" onclick="applySelectedModels('new', 'append')">Append</button>
+                          <button class="btn btn-primary btn-compact" onclick="applySelectedModels('new', 'replace')">Use Selected</button>
+                      </div>
+                  </div>
+              </div>
+            <div class="form-group">
+                <label>API Key</label>
+                <div class="input-wrapper">
+                    <input type="password" id="newKey" placeholder="sk-xxxxxxxxxxxxxxxx">
+                    <button class="toggle-visibility" onclick="toggleKeyVisibility('newKey')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeAddModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="addProfile()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <span class="toast-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        </span>
+        <span class="toast-message">Saved!</span>
+    </div>
+
+         <script>
+        // State
+        let profiles = [];
+        let activeProfileId = null;
+        let editingProfileId = null;
+         let configPath = '';
+         let authPath = '';
+         let activeProfile = null;
+
+         const modelPickerState = {
+             new: { models: [], selected: new Set(), lastFetchKey: '' },
+             edit: { models: [], selected: new Set(), lastFetchKey: '' }
+         };
+
+         function getFormDom(kind) {
+             if (kind === 'edit') {
+                 return {
+                     urlEl: document.getElementById('editUrl'),
+                     keyEl: document.getElementById('editKey'),
+                     modelEl: document.getElementById('editModelId'),
+                     pickerEl: document.getElementById('editModelPicker'),
+                     metaEl: document.getElementById('editModelPickerMeta'),
+                     searchEl: document.getElementById('editModelSearch'),
+                     listEl: document.getElementById('editModelList')
+                 };
+             }
+             return {
+                 urlEl: document.getElementById('newUrl'),
+                 keyEl: document.getElementById('newKey'),
+                 modelEl: document.getElementById('newModelId'),
+                 pickerEl: document.getElementById('newModelPicker'),
+                 metaEl: document.getElementById('newModelPickerMeta'),
+                 searchEl: document.getElementById('newModelSearch'),
+                 listEl: document.getElementById('newModelList')
+             };
+         }
+
+         function renderModelPicker(kind) {
+             const state = modelPickerState[kind];
+             const dom = getFormDom(kind);
+             if (!dom || !dom.pickerEl) return;
+
+             const q = String(dom.searchEl.value || '').trim().toLowerCase();
+             const models = Array.isArray(state.models) ? state.models : [];
+             const filtered = q
+                 ? models.filter((id) => String(id).toLowerCase().includes(q))
+                 : models;
+
+             dom.metaEl.textContent = `${filtered.length}/${models.length}`;
+
+             const maxRender = 200;
+             const slice = filtered.slice(0, maxRender);
+             const kindArg = JSON.stringify(kind);
+             dom.listEl.innerHTML = slice.map((id) => {
+                 const idStr = String(id || '').trim();
+                 const checked = state.selected.has(idStr);
+                 const idArg = JSON.stringify(idStr);
+                 const safeText = escapeHtml(idStr);
+                 return `
+                     <div class="model-picker-item" onclick="toggleModelSelection(${kindArg}, ${idArg})">
+                         <input type="checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation(); toggleModelSelection(${kindArg}, ${idArg})" />
+                         <div class="model-picker-id" title="${safeText}">${safeText}</div>
+                     </div>
+                 `;
+             }).join('') + (filtered.length > maxRender
+                 ? `<div class="config-path">Showing first ${maxRender}. Refine filter to see more.</div>`
+                 : '');
+         }
+
+         function toggleModelSelection(kind, modelId) {
+             const id = String(modelId || '').trim();
+             if (!id) return;
+             const state = modelPickerState[kind];
+             if (state.selected.has(id)) state.selected.delete(id);
+             else state.selected.add(id);
+             renderModelPicker(kind);
+         }
+
+         async function fetchModelsForForm(kind) {
+             if (!isElectron) {
+                 showToast('Model fetch is only available in the desktop app', 'error');
+                 return;
+             }
+
+             const dom = getFormDom(kind);
+             const url = String(dom.urlEl.value || '').trim();
+             const key = String(dom.keyEl.value || '').trim();
+             if (!url) {
+                 showToast('Please enter an API Base URL first', 'error');
+                 return;
+             }
+             if (!key) {
+                 showToast('Please enter an API Key first', 'error');
+                 return;
+             }
+
+             dom.pickerEl.style.display = 'block';
+             dom.listEl.innerHTML = '<div class="config-path">Fetching models...</div>';
+             dom.metaEl.textContent = '';
+
+             const res = await window.electronAPI.fetchProviderModels({ url, key });
+             if (!res || !res.ok) {
+                 dom.listEl.innerHTML = `<div class="config-path">Failed to fetch models.${res && res.error ? ('\n' + escapeHtml(res.error)) : ''}</div>`;
+                 showToast('Failed to fetch models', 'error');
+                 return;
+             }
+
+             const ids = Array.isArray(res.modelIds) ? res.modelIds : [];
+             if (res.resolvedBaseURL && typeof res.resolvedBaseURL === 'string' && res.resolvedBaseURL.trim()) {
+                 dom.urlEl.value = res.resolvedBaseURL;
+             }
+
+             // Reset selection if the fetch target changed.
+             const fetchKey = String(dom.urlEl.value || '').trim();
+             const state = modelPickerState[kind];
+             if (state.lastFetchKey !== fetchKey) {
+                 state.selected = new Set();
+                 state.lastFetchKey = fetchKey;
+             }
+
+             state.models = ids;
+             if (ids.length === 0) {
+                 dom.listEl.innerHTML = '<div class="config-path">No models returned by provider.</div>';
+                 showToast('No models returned', 'error');
+                 return;
+             }
+
+             // Auto-select currently entered models if present.
+             const existing = parseModelIdsText(dom.modelEl.value);
+             for (const id of existing) state.selected.add(id);
+
+             renderModelPicker(kind);
+             showToast('Models fetched', 'success');
+         }
+
+         function applySelectedModels(kind, mode) {
+             const dom = getFormDom(kind);
+             const state = modelPickerState[kind];
+             const selected = Array.from(state.selected.values());
+             if (selected.length === 0) {
+                 showToast('Select at least one model', 'error');
+                 return;
+             }
+
+             const existing = parseModelIdsText(dom.modelEl.value);
+             const combined = mode === 'append' ? [...existing, ...selected] : [...selected];
+             const seen = new Set();
+             const unique = [];
+             for (const id of combined) {
+                 const v = String(id || '').trim();
+                 if (!v || seen.has(v)) continue;
+                 seen.add(v);
+                 unique.push(v);
+             }
+             dom.modelEl.value = unique.join(', ');
+             showToast('Model IDs updated', 'success');
+         }
+
+         // Check if running in Electron
+         const isElectron = typeof window.electronAPI !== 'undefined';
+
+         function parseModelIdsText(input) {
+             return String(input || '')
+                 .split(/[\n,]+/)
+                 .map(s => s.trim())
+                 .filter(Boolean);
+         }
+
+        // Initialize
+         document.addEventListener('DOMContentLoaded', async () => {
+             await loadProfiles();
+             await loadConfigPath();
+             renderProfiles();
+
+             const newSearch = document.getElementById('newModelSearch');
+             if (newSearch) newSearch.addEventListener('input', () => renderModelPicker('new'));
+             const editSearch = document.getElementById('editModelSearch');
+             if (editSearch) editSearch.addEventListener('input', () => renderModelPicker('edit'));
+             
+              // Listen for profile activation from main process
+              if (isElectron) {
+                  window.electronAPI.onProfileActivated((profile) => {
+                      activeProfileId = profile.id;
+                      renderProfiles();
+                      showToast(`Switched to: ${profile.name}`, 'success');
+                  });
+
+                 window.electronAPI.onProfilesChanged(async () => {
+                     await loadProfiles();
+                     renderProfiles();
+                 });
+             }
+         });
+
+        // Load profiles
+        async function loadProfiles() {
+            if (isElectron) {
+                const data = await window.electronAPI.getProfiles();
+                profiles = data.profiles || [];
+                activeProfileId = data.activeProfileId;
+            } else {
+                const stored = localStorage.getItem('opencode_profiles');
+                profiles = stored ? JSON.parse(stored) : [];
+                activeProfileId = localStorage.getItem('opencode_active_profile');
+            }
+        }
+
+        // Load config path
+        async function loadConfigPath() {
+            if (isElectron) {
+                configPath = await window.electronAPI.getOpenCodeConfigPath();
+                authPath = await window.electronAPI.getOpenCodeAuthPath();
+            }
+        }
+
+        // Save profiles
+        async function saveProfiles() {
+            if (isElectron) {
+                await window.electronAPI.saveProfiles(profiles);
+            } else {
+                localStorage.setItem('opencode_profiles', JSON.stringify(profiles));
+            }
+        }
+
+        // Render profiles list
+         function renderProfiles() {
+            const list = document.getElementById('profilesList');
+            const activeCard = document.getElementById('activeCard');
+
+            if (profiles.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                        </svg>
+                        <p>No profiles yet.<br>Add your first configuration!</p>
+                    </div>
+                `;
+                activeCard.style.display = 'none';
+                return;
+            }
+
+             list.innerHTML = profiles.map(profile => `
+                 <div class="profile-item ${profile.id === activeProfileId ? 'active' : ''}" onclick="selectProfile('${profile.id}')">
+                    <div class="profile-info">
+                        <div class="profile-dot"></div>
+                        <div class="profile-details">
+                             <div class="profile-name">${escapeHtml(profile.name)}</div>
+                            <div class="profile-url">${escapeHtml(
+                                (profile.providerId || 'missing-provider-id') +
+                                '  ' +
+                                (profile.modelId || 'missing-model') +
+                                ((Array.isArray(profile.modelIds) && profile.modelIds.length > 1)
+                                  ? ' (+' + (profile.modelIds.length - 1) + ')'
+                                  : '') +
+                                '  ' +
+                                (profile.url || 'No URL set')
+                            )}</div>
+                         </div>
+                     </div>
+                    <div class="profile-actions">
+                        <button class="icon-btn" onclick="event.stopPropagation(); editProfile('${profile.id}')" title="Edit">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                        </button>
+                        <button class="icon-btn danger" onclick="event.stopPropagation(); deleteProfile('${profile.id}')" title="Delete">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+             // Update active card
+             if (activeProfileId) {
+                 const active = profiles.find(p => p.id === activeProfileId);
+                 if (active) {
+                     activeProfile = active;
+                     document.getElementById('currentUrl').value = active.url;
+                     document.getElementById('currentKey').value = active.key ? '••••••••••••' + active.key.slice(-4) : '';
+                     document.getElementById('configFilePath').textContent = 'Config: ' + (configPath || '(unknown)');
+                     document.getElementById('authFilePath').textContent = 'Auth:   ' + (authPath || '(unknown)');
+
+                     const resultEl = document.getElementById('modelsCheckResult');
+                     resultEl.style.display = 'none';
+                     resultEl.textContent = '';
+                     activeCard.style.display = 'block';
+                 } else {
+                     activeProfile = null;
+                     activeCard.style.display = 'none';
+                 }
+             } else {
+                 activeProfile = null;
+                 activeCard.style.display = 'none';
+             }
+         }
+
+         async function checkOpenCodeModels() {
+             if (!isElectron) {
+                 showToast('OpenCode check is only available in the desktop app', 'error');
+                 return;
+             }
+
+             const providerId = activeProfile && activeProfile.providerId ? String(activeProfile.providerId) : '';
+             const resultEl = document.getElementById('modelsCheckResult');
+             resultEl.style.display = 'block';
+             resultEl.textContent = 'Checking OpenCode models...';
+
+             const res = await window.electronAPI.opencodeModels();
+             if (!res || !res.ok) {
+                 resultEl.textContent = 'Failed to run `opencode models`.' + (res && res.error ? ('\n' + res.error) : '');
+                 showToast('OpenCode models check failed', 'error');
+                 return;
+             }
+
+             const lines = String(res.output || '')
+                 .split(/\r?\n/)
+                 .map(s => s.trim())
+                 .filter(Boolean);
+
+             if (!providerId) {
+                 resultEl.textContent = 'OpenCode models loaded: ' + lines.length + ' entries.';
+                 showToast('Models loaded', 'success');
+                 return;
+             }
+
+             const prefix = providerId + '/';
+             const matches = lines.filter(l => l.startsWith(prefix));
+             if (matches.length === 0) {
+                 resultEl.textContent = `OpenCode models loaded: ${lines.length} entries.\nProvider '${providerId}' not found.\nTip: fully restart OpenCode to reload config.`;
+                 showToast('Provider not found in OpenCode', 'error');
+                 return;
+             }
+
+             const preview = matches.slice(0, 10).join('\n');
+             resultEl.textContent = `Found ${matches.length} models for '${providerId}':\n` + preview + (matches.length > 10 ? '\n...' : '');
+             showToast('Provider is visible in OpenCode', 'success');
+         }
+
+         async function openOpenCode() {
+             if (!isElectron) return;
+             const res = await window.electronAPI.launchOpenCode([]);
+             if (!res || !res.ok) {
+                 showToast('Failed to launch OpenCode', 'error');
+             }
+         }
+
+        // Select/activate a profile
+        async function selectProfile(id) {
+            activeProfileId = id;
+            
+            if (isElectron) {
+                await window.electronAPI.activateProfile(id);
+            } else {
+                localStorage.setItem('opencode_active_profile', id);
+            }
+            
+            renderProfiles();
+            showToast('Configuration activated!', 'success');
+        }
+
+        // Window controls
+        function minimizeWindow() {
+            if (isElectron) {
+                window.electronAPI.minimizeWindow();
+            }
+        }
+
+        function closeWindow() {
+            if (isElectron) {
+                window.electronAPI.closeWindow();
+            }
+        }
+
+        // Open add modal
+         function openAddModal() {
+              document.getElementById('newName').value = '';
+              document.getElementById('newProviderId').value = '';
+              document.getElementById('newUrl').value = '';
+              document.getElementById('newModelId').value = 'gpt-4o-mini';
+              document.getElementById('newKey').value = '';
+
+              modelPickerState.new.models = [];
+              modelPickerState.new.selected = new Set();
+              modelPickerState.new.lastFetchKey = '';
+              const picker = document.getElementById('newModelPicker');
+              if (picker) picker.style.display = 'none';
+              const search = document.getElementById('newModelSearch');
+              if (search) search.value = '';
+
+             document.getElementById('addModal').classList.add('show');
+             document.getElementById('newName').focus();
+         }
+
+        // Close add modal
+         function closeAddModal() {
+             document.getElementById('addModal').classList.remove('show');
+
+             const picker = document.getElementById('newModelPicker');
+             if (picker) picker.style.display = 'none';
+         }
+
+        // Add new profile
+         async function addProfile() {
+             const name = document.getElementById('newName').value.trim();
+             const providerId = document.getElementById('newProviderId').value.trim();
+             const url = document.getElementById('newUrl').value.trim();
+            const modelIds = parseModelIdsText(document.getElementById('newModelId').value);
+            const modelId = modelIds[0] || '';
+             const key = document.getElementById('newKey').value.trim();
+
+            if (!name) {
+                showToast('Please enter a profile name', 'error');
+                return;
+            }
+
+            if (!providerId) {
+                showToast('Please enter a Provider ID', 'error');
+                return;
+            }
+
+            if (!/^[0-9a-z-]+$/.test(providerId)) {
+                showToast('Provider ID must be a-z, 0-9, and hyphens only', 'error');
+                return;
+            }
+
+            if (profiles.some(p => (p.providerId || '') === providerId)) {
+                showToast('Provider ID already exists', 'error');
+                return;
+            }
+
+            if (!url) {
+                showToast('Please enter an API Base URL', 'error');
+                return;
+            }
+
+            if (modelIds.length === 0) {
+                showToast('Please enter at least one Model ID', 'error');
+                return;
+            }
+
+            if (!key) {
+                showToast('Please enter an API Key', 'error');
+                return;
+            }
+
+             const profile = {
+                 id: 'profile_' + Date.now(),
+                 name,
+                 providerId,
+                 url,
+                 modelId,
+                modelIds,
+                 key
+             };
+
+            if (isElectron) {
+                try {
+                    await window.electronAPI.addProfile(profile);
+                } catch (e) {
+                    showToast(String(e && e.message ? e.message : e), 'error');
+                    return;
+                }
+            }
+            
+            profiles.push(profile);
+            await saveProfiles();
+            closeAddModal();
+            await loadProfiles();
+            renderProfiles();
+            showToast('Profile added!', 'success');
+        }
+
+        // Edit profile
+         function editProfile(id) {
+             const profile = profiles.find(p => p.id === id);
+             if (!profile) return;
+
+            editingProfileId = id;
+            document.getElementById('editName').value = profile.name;
+             document.getElementById('editProviderId').value = profile.providerId || '';
+             document.getElementById('editUrl').value = profile.url;
+            const ids = (Array.isArray(profile.modelIds) && profile.modelIds.length)
+                ? profile.modelIds
+                : (profile.modelId ? [profile.modelId] : []);
+            document.getElementById('editModelId').value = ids.join(', ') || 'gpt-4o-mini';
+             document.getElementById('editKey').value = profile.key;
+             document.getElementById('editCard').style.display = 'block';
+
+             modelPickerState.edit.models = [];
+             modelPickerState.edit.selected = new Set(ids);
+             modelPickerState.edit.lastFetchKey = '';
+             const picker = document.getElementById('editModelPicker');
+             if (picker) picker.style.display = 'none';
+             const search = document.getElementById('editModelSearch');
+             if (search) search.value = '';
+         }
+
+        // Cancel edit
+         function cancelEdit() {
+             editingProfileId = null;
+             document.getElementById('editCard').style.display = 'none';
+
+             const picker = document.getElementById('editModelPicker');
+             if (picker) picker.style.display = 'none';
+         }
+
+        // Save profile
+         async function saveProfile() {
+             if (!editingProfileId) return;
+
+            const name = document.getElementById('editName').value.trim();
+             const providerId = document.getElementById('editProviderId').value.trim();
+             const url = document.getElementById('editUrl').value.trim();
+            const modelIds = parseModelIdsText(document.getElementById('editModelId').value);
+            const modelId = modelIds[0] || '';
+             const key = document.getElementById('editKey').value.trim();
+
+            if (!name) {
+                showToast('Please enter a profile name', 'error');
+                return;
+            }
+
+            if (!providerId) {
+                showToast('Please enter a Provider ID', 'error');
+                return;
+            }
+
+            if (!/^[0-9a-z-]+$/.test(providerId)) {
+                showToast('Provider ID must be a-z, 0-9, and hyphens only', 'error');
+                return;
+            }
+
+            if (profiles.some(p => p.id !== editingProfileId && (p.providerId || '') === providerId)) {
+                showToast('Provider ID already exists', 'error');
+                return;
+            }
+
+            if (!url) {
+                showToast('Please enter an API Base URL', 'error');
+                return;
+            }
+
+            if (modelIds.length === 0) {
+                showToast('Please enter at least one Model ID', 'error');
+                return;
+            }
+
+            if (!key) {
+                showToast('Please enter an API Key', 'error');
+                return;
+            }
+
+            const index = profiles.findIndex(p => p.id === editingProfileId);
+            if (index !== -1) {
+                 profiles[index] = {
+                     ...profiles[index],
+                     name,
+                     providerId,
+                     url,
+                     modelId,
+                    modelIds,
+                     key
+                 };
+                
+                if (isElectron) {
+                    try {
+                        await window.electronAPI.updateProfile(profiles[index]);
+                    } catch (e) {
+                        showToast(String(e && e.message ? e.message : e), 'error');
+                        return;
+                    }
+                }
+                
+                await saveProfiles();
+            }
+
+            cancelEdit();
+            await loadProfiles();
+            renderProfiles();
+            showToast('Profile updated!', 'success');
+        }
+
+        // Delete profile
+        async function deleteProfile(id) {
+            if (!confirm('Delete this profile?')) return;
+
+            if (isElectron) {
+                await window.electronAPI.deleteProfile(id);
+            }
+            
+            profiles = profiles.filter(p => p.id !== id);
+            
+            if (activeProfileId === id) {
+                activeProfileId = null;
+                if (!isElectron) {
+                    localStorage.removeItem('opencode_active_profile');
+                }
+            }
+            
+            await saveProfiles();
+            await loadProfiles();
+            renderProfiles();
+            showToast('Profile deleted', 'success');
+        }
+
+        // Toggle password visibility
+        function toggleKeyVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = toast.querySelector('.toast-message');
+            const toastIcon = toast.querySelector('.toast-icon');
+            
+            toastMessage.textContent = message;
+            toast.className = 'toast ' + type;
+            
+            if (type === 'success') {
+                toastIcon.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                `;
+            } else {
+                toastIcon.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                `;
+            }
+            
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2500);
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeAddModal();
+                cancelEdit();
+            }
+        });
+    </script>
+</body>
+</html>
